@@ -5,12 +5,14 @@ locals {
   })
   vpc_id = var.vpc_id == "" ? aws_vpc.nodes[0].id : var.vpc_id
 
-  private_subnets_ids  = length(var.private_subnets_ids) == 0 ? aws_subnet.private[*].id : var.private_subnets_ids
-  private_route_tables = length(var.private_subnets_ids) == 0 ? aws_route_table.private[*].id : data.aws_route_table.private[*].id
+  validate_private_subnets_count = length(var.private_subnets_ids) == 0 ? true : (var.high_availability ? (length(var.private_subnets_ids) == 3 ? true : tobool("If high availability is enabled, there must be 3 private subnets on each AZ")) : true)
+  private_subnets_ids            = length(var.private_subnets_ids) == 0 ? aws_subnet.private[*].id : var.private_subnets_ids
+  private_route_tables           = length(var.private_subnets_ids) == 0 ? aws_route_table.private[*].id : data.aws_route_table.private[*].id
 
-  public_subnets_ids  = length(var.public_subnets_ids) == 0 ? aws_subnet.public[*].id : var.public_subnets_ids
-  public_route_table  = length(var.public_subnets_ids) == 0 ? aws_route_table.public[0].id : data.aws_route_table.public[0].id
-  internet_gateway_id = var.internet_gateway_id == "" ? aws_internet_gateway.nodes[0].id : var.internet_gateway_id
+  validate_public_subnets_count = length(var.public_subnets_ids) == 0 ? true : (var.high_availability ? (length(var.public_subnets_ids) == 3 ? true : tobool("If high availability is enabled, there must be 3 public subnets on each AZ")) : true)
+  public_subnets_ids            = length(var.public_subnets_ids) == 0 ? aws_subnet.public[*].id : var.public_subnets_ids
+  public_route_table            = length(var.public_subnets_ids) == 0 ? aws_route_table.public[0].id : data.aws_route_table.public[0].id
+  internet_gateway_id           = var.internet_gateway_id == "" ? aws_internet_gateway.nodes[0].id : var.internet_gateway_id
 }
 
 resource "aws_vpc" "nodes" {
