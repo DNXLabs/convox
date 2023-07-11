@@ -76,11 +76,6 @@ resource "aws_subnet" "public" {
   }
 }
 
-data "aws_route_table" "public" {
-  count     = length(var.public_subnets_ids)
-  subnet_id = var.public_subnets_ids[count.index]
-}
-
 resource "aws_route_table" "public" {
   count  = length(var.public_subnets_ids) == 0 ? 1 : 0
   vpc_id = local.vpc_id
@@ -128,11 +123,10 @@ resource "aws_subnet" "private" {
     null_resource.wait_vpc_nodes
   ]
 
-  // If the variable `private_subnets_ids` is empty
-  // | if yes, check if `private` is true
-  // | | if yes, create private subnets according to `local.network_resource_count`
-  // | | else, don't create private subnets
-  // else, don't create private subnets
+  // If len(private_subnets_ids) == 0 then
+  // | if private == true then count = local.network_resource_count
+  // | else count = 0 (because private is false)
+  // else count = 0 (because the private subnets are being provided by input)
   count = length(var.private_subnets_ids) == 0 ? var.private ? local.network_resource_count : 0 : 0
 
   availability_zone = local.availability_zones[count.index]
@@ -161,7 +155,11 @@ resource "aws_eip" "nat" {
 }
 
 resource "aws_nat_gateway" "private" {
-  count = length(var.private_subnets_ids) == 0 ? var.private ? local.network_resource_count : 0 : 0
+  // if len(private_subnet_ids) == 0 then
+  // | if private == true then count = local.network_resource_count
+  // | else count = 0 (because private is false)
+  // else count = 0 (because data.aws_nat_gateway will handle that)
+  count = length(var.private_subnets_ids) == 0 ? (var.private ? local.network_resource_count : 0) : 0
 
   allocation_id = aws_eip.nat[count.index].id
   subnet_id     = local.public_subnets_ids[count.index]
@@ -169,11 +167,6 @@ resource "aws_nat_gateway" "private" {
   tags = merge(local.tags, {
     Name = "${var.name} ${count.index}"
   })
-}
-
-data "aws_route_table" "private" {
-  count     = length(var.private_subnets_ids)
-  subnet_id = var.private_subnets_ids[count.index]
 }
 
 resource "aws_route_table" "private" {
